@@ -76,9 +76,17 @@ export function LiveRepoLoader({
         }
         if (cancelled) return;
         if (body.job.status === "failed") {
+          const message = body.job.error ?? "Analysis failed.";
+          // The engine now reports the real cause (rate limit, not-found, …).
+          // Only add the generic hint when the message doesn't explain itself.
+          const explained = /rate limit|not found|private|GITHUB_TOKEN/i.test(
+            message,
+          );
           fail(
-            body.job.error ?? "Analysis failed.",
-            "Private repositories and very large histories are not supported in lightweight mode.",
+            message,
+            explained
+              ? undefined
+              : "Lightweight mode reads the recent history via the GitHub API. For private repositories or very large histories, run the deep-analysis worker locally (see the README).",
           );
           return;
         }

@@ -8,7 +8,7 @@ import type {
 import { analyzeHistory, type ProgressReporter } from "@/domains/analysis/engine";
 import { isAnalyzable } from "@/domains/analysis/classify";
 import { selectSnapshotPoints } from "@/domains/snapshots/select";
-import { githubApi } from "./client";
+import { githubApi, GitHubError } from "./client";
 import { mapCommit, mapRepository } from "./mapping";
 
 const MAX_COMMIT_PAGES = 3; // 300 most recent commits
@@ -74,27 +74,25 @@ export async function runLightweightAnalysis(
     )
     .catch(() => []);
 
-  // Fetch file-level detail for a sampled subset of commits.
-  report("milestones", 38, "Detecting important milestones", "sampling commit details");
-  const detailShas = sampleDetailShas(commits, DETAIL_BUDGET);
-  const details = await Promise.all(
-    detailShas.map((sha) =>
-      githubApi.commitDetail(owner, repo, sha).catch(() => null),
-    ),
-  );
-  for (const detail of details) {
-    if (!detail) continue;
-    const index = commits.findIndex((c) => c.sha === detail.sha);
-    if (index !== -1) commits[index] = { ...mapCommit(detail), tags: commits[index].tags };
-  }
-
-  // Snapshot points → trees.
-  report("graph", 55, "Reconstructing module relationships", "fetching trees");
+  // Repository trees FIRST — these are essential for the architecture graph,
+  // so they get priority over the optional commit-detail sampling below. On a
+  // tight (unauthenticated) request budget this is what lets a run still
+  // produce a usable result instead of starving the trees.
+  report("graph", 42, "Reconstructing module relationships", "fetching trees");
   const points = selectSnapshotPoints(commits, releases, TREE_BUDGET);
   const samples: TreeSample[] = [];
+  let lastTreeError: unknown = null;
   for (const point of points) {
-    const tree = await githubApi.tree(owner, repo, point.sha).catch(() => null);
-    if (!tree) continue;
+    let tree;
+    try {
+      tree = await githubApi.tree(owner, repo, point.sha);
+    } catch (error) {
+      lastTreeError = error;
+      // Once the rate limit is hit, further tree requests can't succeed —
+      // stop rather than hammering a spent budget.
+      if (error instanceof GitHubError && error.kind === "rate-limited") break;
+      continue;
+    }
     const files = tree.tree
       .filter((e) => e.type === "blob" && isAnalyzable(e.path))
       .slice(0, 4000)
@@ -102,11 +100,37 @@ export async function runLightweightAnalysis(
         path: e.path,
         loc: Math.max(1, Math.round((e.size ?? 0) / BYTES_PER_LINE)),
       }));
-    const packages = await fetchManifestDeps(owner, repo, point.sha);
+    // Only spend a request on the manifest if the tree actually contains one.
+    const hasManifest = tree.tree.some((e) => e.path === "package.json");
+    const packages = hasManifest
+      ? await fetchManifestDeps(owner, repo, point.sha).catch(() => [])
+      : [];
     samples.push({ sha: point.sha, date: point.date, files, packages });
   }
   if (samples.length === 0) {
-    throw new Error("Could not retrieve any repository trees.");
+    throw treeFailureError(lastTreeError);
+  }
+
+  // File-level detail for a sampled subset of commits — enrichment only
+  // (sharpens milestone detection). Best-effort with whatever request budget
+  // remains after the essential trees; a rate limit here simply yields a
+  // coarser-but-valid analysis rather than a failure.
+  report("milestones", 62, "Detecting important milestones", "sampling commit details");
+  const detailShas = sampleDetailShas(commits, DETAIL_BUDGET);
+  let detailCount = 0;
+  for (const sha of detailShas) {
+    let detail;
+    try {
+      detail = await githubApi.commitDetail(owner, repo, sha);
+    } catch (error) {
+      if (error instanceof GitHubError && error.kind === "rate-limited") break;
+      continue;
+    }
+    const index = commits.findIndex((c) => c.sha === detail.sha);
+    if (index !== -1) {
+      commits[index] = { ...mapCommit(detail), tags: commits[index].tags };
+      detailCount += 1;
+    }
   }
 
   // Derive manifest dependency changes between consecutive samples so the
@@ -121,7 +145,12 @@ export async function runLightweightAnalysis(
     contributors,
     treeSamples: samples,
     disclosures: [
-      `Lightweight live analysis: the most recent ${commits.length} commits were analyzed; file-level detail was sampled for ${detailShas.length} of them.`,
+      `Lightweight live analysis: the most recent ${commits.length} commits were analyzed; file-level detail was sampled for ${detailCount} of them.`,
+      ...(detailCount < detailShas.length
+        ? [
+            "The GitHub API request budget was reached, so per-commit detail sampling was reduced. Setting a GITHUB_TOKEN raises the limit and yields a sharper analysis.",
+          ]
+        : []),
       "Line counts in live mode are estimated from file sizes.",
       "Module relationships in live mode come from directory structure and manifests; import-level edges require the deep analysis worker.",
     ],
@@ -129,6 +158,25 @@ export async function runLightweightAnalysis(
 
   report("metrics", 78, "Measuring codebase change");
   return analyzeHistory(input, onProgress);
+}
+
+/** Turn a failed batch of tree fetches into an accurate, actionable error. */
+function treeFailureError(lastError: unknown): Error {
+  if (lastError instanceof GitHubError) {
+    if (lastError.kind === "rate-limited") {
+      return new GitHubError(
+        "GitHub's API rate limit was reached before the repository's file trees could be read. " +
+          "Unauthenticated requests are capped at 60/hour — set a GITHUB_TOKEN to raise it to 5,000/hour, then retry.",
+        lastError.status,
+        "rate-limited",
+      );
+    }
+    // not-found / forbidden / network — already carries a specific message.
+    return lastError;
+  }
+  return new Error(
+    "Could not retrieve any of this repository's file trees. It may be empty at the sampled commits, or GitHub may be temporarily unavailable.",
+  );
 }
 
 function sampleDetailShas(commits: Commit[], budget: number): string[] {
