@@ -5,7 +5,7 @@ import { files, makeCommit, routineCommits } from "./fixtures/history";
 describe("detectMilestones", () => {
   it("always detects the founding commit", () => {
     const commits = routineCommits("2023-01-01", "2023-06-01", 20);
-    const milestones = detectMilestones(commits, [], []);
+    const milestones = detectMilestones(commits, []);
     expect(milestones[0].category).toBe("founding");
     expect(milestones[0].sha).toBe(commits[0].sha);
     expect(milestones[0].signals[0].evidence).toContain(commits[0].sha);
@@ -21,7 +21,7 @@ describe("detectMilestones", () => {
       }),
       ...routineCommits("2023-03-20", "2023-06-01", 15),
     ];
-    const milestones = detectMilestones(commits, [], []);
+    const milestones = detectMilestones(commits, []);
     const adoption = milestones.find((m) => m.category === "framework-adoption");
     expect(adoption).toBeDefined();
     expect(adoption!.title).toContain("React");
@@ -43,7 +43,7 @@ describe("detectMilestones", () => {
       }),
       ...routineCommits("2023-04-10", "2023-06-01", 10),
     ];
-    const categories = detectMilestones(commits, [], []).map((m) => m.category);
+    const categories = detectMilestones(commits, []).map((m) => m.category);
     expect(categories).toContain("testing");
     expect(categories).toContain("ci-cd");
   });
@@ -65,7 +65,7 @@ describe("detectMilestones", () => {
       }),
       ...routineCommits("2023-03-20", "2023-06-01", 20),
     ];
-    const milestones = detectMilestones(commits, [], []);
+    const milestones = detectMilestones(commits, []);
     expect(milestones.some((m) => m.category === "restructure")).toBe(true);
     // packages/ extraction should also fire once files appear there.
     const commits2 = [
@@ -76,7 +76,7 @@ describe("detectMilestones", () => {
       }),
     ];
     expect(
-      detectMilestones(commits2, [], []).some((m) => m.category === "extraction"),
+      detectMilestones(commits2, []).some((m) => m.category === "extraction"),
     ).toBe(true);
   });
 
@@ -94,19 +94,15 @@ describe("detectMilestones", () => {
     ];
     const tagged = commits[commits.length - 1];
     tagged.tags.push("v1.0.0");
-    const milestones = detectMilestones(
-      commits,
-      [{ tag: "v1.0.0", date: tagged.date, sha: tagged.sha }],
-      [],
-    );
+    const milestones = detectMilestones(commits, [
+      { tag: "v1.0.0", date: tagged.date, sha: tagged.sha },
+    ]);
     expect(milestones.some((m) => m.category === "mass-deletion")).toBe(true);
     expect(milestones.some((m) => m.category === "release")).toBe(true);
     // Patch releases of a x.0 line must not count as majors.
-    const patch = detectMilestones(
-      commits,
-      [{ tag: "v1.0.3", date: tagged.date, sha: tagged.sha }],
-      [],
-    );
+    const patch = detectMilestones(commits, [
+      { tag: "v1.0.3", date: tagged.date, sha: tagged.sha },
+    ]);
     expect(patch.filter((m) => m.category === "release")).toHaveLength(0);
   });
 
@@ -131,7 +127,7 @@ describe("detectMilestones", () => {
       }),
       ...routineCommits("2023-04-01", "2023-06-01", 30),
     ];
-    const milestones = detectMilestones(commits, [], []);
+    const milestones = detectMilestones(commits, []);
     const merged = milestones.find((m) => m.signals.length >= 2);
     expect(merged).toBeDefined();
     expect(merged!.confidence).toBeGreaterThan(0.6);
@@ -153,7 +149,7 @@ describe("detectMilestones", () => {
         }),
       );
     }
-    const milestones = detectMilestones(commits, [], []);
+    const milestones = detectMilestones(commits, []);
     expect(milestones.length).toBeLessThanOrEqual(40);
     expect(milestones.some((m) => m.category === "founding")).toBe(true);
   });

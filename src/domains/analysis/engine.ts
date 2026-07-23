@@ -58,7 +58,7 @@ export function analyzeHistory(
 
   const fileRecords = buildFileRecords(commits);
   report("milestones", 35);
-  const milestones = detectMilestones(commits, input.releases, contributors);
+  const milestones = detectMilestones(commits, input.releases);
   report("graph", 50, `${samples.length} tree snapshots`);
 
   const reasons = new Map<

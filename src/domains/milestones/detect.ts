@@ -1,6 +1,5 @@
 import type {
   Commit,
-  Contributor,
   Milestone,
   MilestoneCategory,
   MilestoneSignal,
@@ -49,7 +48,6 @@ function median(values: number[]): number {
 export function detectMilestones(
   commits: Commit[], // oldest → newest
   releases: Release[],
-  contributors: Contributor[],
 ): Milestone[] {
   if (commits.length === 0) return [];
   const candidates: Candidate[] = [];
@@ -264,7 +262,7 @@ export function detectMilestones(
     });
   }
 
-  const merged = mergeCandidates(candidates, contributors);
+  const merged = mergeCandidates(candidates);
 
   // Long histories produce many candidates; keep the timeline readable by
   // retaining the highest-confidence milestones (founding + majors always).
@@ -388,10 +386,7 @@ function detectContributorSurges(commits: Commit[]): Candidate[] {
  * with the repository's active time span so a 15-year history doesn't drown
  * in markers (min 3 days, ~1/120th of the span, max 45 days).
  */
-function mergeCandidates(
-  candidates: Candidate[],
-  _contributors: Contributor[],
-): Milestone[] {
+function mergeCandidates(candidates: Candidate[]): Milestone[] {
   const sorted = [...candidates].sort((a, b) => a.date.localeCompare(b.date));
   const groups: Candidate[][] = [];
   const DAY = 24 * 3600 * 1000;
