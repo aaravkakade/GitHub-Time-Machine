@@ -1,26 +1,272 @@
 @import "tailwindcss";
 
+/* ------------------------------------------------------------------ */
+/* CodeChronicle design tokens — dark-first, light theme via .light    */
+/* ------------------------------------------------------------------ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+
+  /* Surfaces */
+  --surface-0: #0b0b10;
+  --surface-1: #101017;
+  --surface-2: #16161f;
+  --surface-3: #1d1d29;
+  --surface-inverse: #f4f4f6;
+
+  /* Borders */
+  --line-0: #1e1e2a;
+  --line-1: #2a2a3a;
+  --line-2: #3d3d52;
+
+  /* Ink */
+  --ink-1: #ececf2;
+  --ink-2: #9d9db0;
+  --ink-3: #64647a;
+
+  /* Accent (UI only — never a data series color) */
+  --accent: #7c86ff;
+  --accent-strong: #9ba3ff;
+  --accent-soft: rgba(124, 134, 255, 0.13);
+  --accent-line: rgba(124, 134, 255, 0.4);
+
+  /* Semantic change colors (always paired with a glyph or ring shape) */
+  --add: #3fb950;
+  --add-soft: rgba(63, 185, 80, 0.14);
+  --remove: #f16a5e;
+  --remove-soft: rgba(241, 106, 94, 0.13);
+  --warn: #d9a13b;
+  --warn-soft: rgba(217, 161, 59, 0.13);
+  --neutral-change: #8d8da2;
+
+  /* Single-series chart color (validated palette, slot 1, dark step) */
+  --chart-1: #3987e5;
+  --chart-1-soft: rgba(57, 135, 229, 0.16);
+
+  /* Categorical cluster hues — validated order, dark steps.
+     Used only as redundant encoding on labeled, spatially-grouped clusters. */
+  --cluster-1: #3987e5;
+  --cluster-2: #d95926;
+  --cluster-3: #199e70;
+  --cluster-4: #c98500;
+  --cluster-5: #d55181;
+  --cluster-6: #008300;
+  --cluster-7: #9085e9;
+  --cluster-8: #e66767;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 16px;
+
+  /* Motion */
+  --dur-fast: 120ms;
+  --dur-med: 240ms;
+  --dur-slow: 480ms;
+  --dur-graph: 700ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.cc-light {
+  color-scheme: light;
+
+  --surface-0: #fafafc;
+  --surface-1: #ffffff;
+  --surface-2: #f2f2f6;
+  --surface-3: #e9e9f0;
+  --surface-inverse: #14141c;
+
+  --line-0: #ececf1;
+  --line-1: #dcdce5;
+  --line-2: #c2c2d0;
+
+  --ink-1: #17171f;
+  --ink-2: #565668;
+  --ink-3: #8c8c9e;
+
+  --accent: #5058d6;
+  --accent-strong: #3f47c4;
+  --accent-soft: rgba(80, 88, 214, 0.1);
+  --accent-line: rgba(80, 88, 214, 0.35);
+
+  --add: #1a7f37;
+  --add-soft: rgba(26, 127, 55, 0.12);
+  --remove: #cf222e;
+  --remove-soft: rgba(207, 34, 46, 0.1);
+  --warn: #9a6700;
+  --warn-soft: rgba(154, 103, 0, 0.12);
+  --neutral-change: #6e6e82;
+
+  --chart-1: #2a78d6;
+  --chart-1-soft: rgba(42, 120, 214, 0.14);
+
+  --cluster-1: #2a78d6;
+  --cluster-2: #eb6834;
+  --cluster-3: #1baf7a;
+  --cluster-4: #eda100;
+  --cluster-5: #e87ba4;
+  --cluster-6: #008300;
+  --cluster-7: #4a3aa7;
+  --cluster-8: #e34948;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-inverse: var(--surface-inverse);
+  --color-line-0: var(--line-0);
+  --color-line-1: var(--line-1);
+  --color-line-2: var(--line-2);
+  --color-ink-1: var(--ink-1);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-add: var(--add);
+  --color-add-soft: var(--add-soft);
+  --color-remove: var(--remove);
+  --color-remove-soft: var(--remove-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-neutral-change: var(--neutral-change);
+  --color-chart-1: var(--chart-1);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ------------------------------------------------------------------ */
+/* Base                                                                */
+/* ------------------------------------------------------------------ */
+
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--surface-0);
+  color: var(--ink-1);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv05";
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--ink-1);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Recessive scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) transparent;
+}
+
+/* ------------------------------------------------------------------ */
+/* Graph + timeline shared states                                      */
+/* ------------------------------------------------------------------ */
+
+.react-flow__node {
+  transition:
+    transform var(--dur-graph) var(--ease-in-out),
+    opacity var(--dur-slow) var(--ease-out);
+}
+
+.react-flow__edge path {
+  transition:
+    opacity var(--dur-slow) var(--ease-out),
+    stroke var(--dur-slow) var(--ease-out),
+    stroke-width var(--dur-slow) var(--ease-out);
+}
+
+.react-flow__attribution {
+  background: transparent !important;
+  color: var(--ink-3) !important;
+}
+
+.react-flow__minimap {
+  background: var(--surface-2) !important;
+}
+
+.react-flow__minimap-mask {
+  fill: var(--surface-0);
+  fill-opacity: 0.65;
+}
+
+@keyframes node-enter {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes node-exit {
+  from {
+    opacity: 1;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 0.55;
+  }
+}
+
+.cc-node-enter {
+  animation: node-enter var(--dur-slow) var(--ease-out) both;
+}
+
+.cc-node-exit {
+  animation: node-exit var(--dur-slow) var(--ease-in-out) both;
+  pointer-events: none;
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.cc-pulse {
+  animation: pulse-soft 2.4s var(--ease-in-out) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .react-flow__node,
+  .react-flow__edge path {
+    transition-duration: 1ms !important;
+  }
+  .cc-node-enter,
+  .cc-node-exit,
+  .cc-pulse {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
 }
